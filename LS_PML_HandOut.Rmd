@@ -122,4 +122,16 @@ Accuracy for Random Forest model was 0.995 (95% CI: (0.993, 0.997)) as expected 
 
 The random Forest model would be a better logical method to select.  We can calculate the out-of-sample error is at 0.5% based on 1 - accuracy. 
 
+```{r Quiz result}
+predictQuiz <- predict(ls_predict_M2, ls_testing_data, type="class")
+predictQuiz
 
+ls_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    fname = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=fname,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+ls_write_files(predictQuiz)
