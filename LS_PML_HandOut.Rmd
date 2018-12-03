@@ -1,0 +1,125 @@
+---
+title: "Leyla Samiee \n Practical Machine Learning Course Handout"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## GitHub Documents
+
+Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+Data
+
+The training data for this project are available here: [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv]
+
+The test data are available here: [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv]
+
+The data for this project come from this source: [http://groupware.les.inf.puc-rio.br/har]. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+What you should submit
+
+The goal of your project is to predict the manner in which they did the exercise. This is the “classe” variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+Your submission should consist of a link to a Github repo with your R markdown and compiled HTML file describing your analysis. Please constrain the text of the writeup to < 2000 words and the number of figures to be less than 5. It will make it easier for the graders if you submit a repo with a gh-pages branch so the HTML page can be viewed online (and you always want to make it easy on graders :-).
+You should also apply your machine learning algorithm to the 20 test cases available in the test data above. Please submit your predictions in appropriate format to the programming assignment for automated grading. See the programming assignment for additional details.
+
+
+```{r reading files, installing packages, including libraries }
+
+library("readr", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
+library("rpart", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
+library("rpart.plot", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
+library("randomForest", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
+library("caret", lib.loc="/Library/Frameworks/R.framework/Versions/3.5/Resources/library")
+
+```
+
+## Reading input files 
+
+```{r pressure, echo=FALSE}
+ls_training_data <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+ls_testing_data <- read.csv('pml-testing.csv', na.strings=c("NA","#DIV/0!", ""))
+dim(ls_training_data)
+dim(ls_testing_data)
+```
+
+Looking at the data set, it have some missing data, some data cleansing and preporcessiong is needed on the data.
+
+#cleaning up the data
+```{r data cleanup}
+ls_training_data <- ls_training_data[,colSums(is.na(ls_training_data)) == 0]
+ls_testing_data <- ls_testing_data[,colSums(is.na(ls_testing_data)) == 0]
+
+# remove column 1 - 7:  user_name, raw_timestamp_part_1, raw_timestamp_part_,2 cvtd_timestamp, new_window, and  num_window
+# these are not useful for the analysis 
+
+ls_testing_data <- ls_testing_data[,-c(1:7)]
+ls_training_data <- ls_training_data[,-c(1:7)]
+
+# head(ls_testing_data)
+# head(ls_training_data)
+```
+
+using 75 - 25% rules we will break the dataset to two group of training and testing
+
+```{r execute the subsetting the data}
+
+ls_partition <- createDataPartition(ls_training_data$classe, times = 1, p=0.75,list=FALSE)
+
+ls_subtraining <- ls_training_data[ls_partition, ] 
+ls_subtesting <- ls_training_data[-ls_partition, ]
+dim(ls_subtraining)
+dim(ls_subtesting)
+# head(ls_subtraining)
+# head(ls_subtesting)
+
+```
+
+Quick look at the classe data in a graph.  To observe each level frequency in comparison with eachother. 
+
+```{r}
+plot(ls_subtraining$classe, col="orange", main="Bar Plot of levels of the variable classe within the subTraining data set", xlab="classe levels", ylab="Frequency")
+
+```
+Level A with 4000 event of count, has the highest frequency. level D with more than 2600 time is the least frequent event
+
+First prediction model:  Decision Tree
+```{r}
+# Model
+ls_predict_M1 <- rpart(classe ~ ., data=ls_subtraining, method="class")
+
+# Predict:
+ls_prediction1 <- predict(ls_predict_M1, ls_subtesting, type = "class")
+
+# Plot our decision tree
+rpart.plot(ls_predict_M1, main="Decision Tree", extra="auto", under=TRUE, faclen=0)
+
+# Look at the results on the data set:
+confusionMatrix(ls_prediction1, ls_subtesting$classe)
+```
+Decision Trees algorithm has accuracy of 0.739 (95% CI: (0.727, 0.752)) 
+
+
+Second prediction model:  Random Forest
+```{r}
+ls_predict_M2 <- randomForest(classe ~. , data=ls_subtraining, method="class")
+
+# Predicting:
+ls_predict2 <- predict(ls_predict_M2, ls_subtesting, type = "class")
+
+# Test results on subTesting data set:
+confusionMatrix(ls_predict2, ls_subtesting$classe)
+
+```
+Conclusion:
+
+Accuracy for Random Forest model was 0.995 (95% CI: (0.993, 0.997)) as expected better preformed in comparison to Decision Tree. 
+
+The random Forest model would be a better logical method to select.  We can calculate the out-of-sample error is at 0.5% based on 1 - accuracy. 
+
+
